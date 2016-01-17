@@ -66,12 +66,19 @@ extern int current_column;
 extern int vertical_size;
 extern int horizontal_size;
 
+extern float gamma;
+extern float r;
+
 inline state_t* get_current_state()
 {
     return &state[current_row][current_column];
 }
 
-
+inline void set_current_state(int row, int column)
+{
+    current_row = row;
+    current_column = column;
+}
 
 
 #endif // WORLD_H

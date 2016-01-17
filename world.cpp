@@ -1,6 +1,8 @@
 #include "world.h"
 #include <iostream>
 #include <fstream>
+#include <cstdlib>  // for calling rand()
+#include <ctime>    // for seeding with system time
 #include <QString>
 
 using namespace std;
@@ -11,9 +13,7 @@ void detect_world_dimensions();
 
 float extract_bol_float();
 
-void extract_parameters();
-
-const utility_t initial_state_utility = 0.2;
+void extract_and_update_parameters();
 
 float gamma;
 float r;
@@ -47,12 +47,15 @@ void read_file()
 
     detect_world_dimensions();
 
+    srand(static_cast<unsigned>(time(0)));
+
     // read world matrix
     for (int row_idx=0; row_idx < vertical_size; row_idx ++)
     {
         for (int col_idx = 0; col_idx < horizontal_size; col_idx ++)
         {
             // assign initial utility
+            float initial_state_utility = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
             state[row_idx][col_idx].current_utility = initial_state_utility;
 
             // save file character to char 'input'
@@ -62,30 +65,26 @@ void read_file()
             {
             case 's':
                 state[row_idx][col_idx].state_desc = START;
-                state[row_idx][col_idx].reward = r; // punishment, as in th rest of the states
                 start_row = row_idx;
                 start_column = col_idx;
                 break;
             case 'b':
                 state[row_idx][col_idx].state_desc = SPECIAL;
-                state[row_idx][col_idx].reward = b; // specially defined reward/punishment
                 b_flg = true;
                 break;
             case 'f':
                 state[row_idx][col_idx].state_desc = FORBIDDEN;
+                state[row_idx][col_idx].current_utility = 0;
                 break;
             case 't':
                 state[row_idx][col_idx].state_desc = TERMINAL_T;
-                state[row_idx][col_idx].reward = t; // specially defined reward/punishment
                 break;
             case 'u':
                 state[row_idx][col_idx].state_desc = TERMINAL_U;
-                state[row_idx][col_idx].reward = u; // specially defined reward/punishment
                 u_flg = true;
                 break;
             default:
                 state[row_idx][col_idx].state_desc = REGULAR;
-                state[row_idx][col_idx].reward = r; // regular punishment
                 break;
             }
         }
@@ -95,7 +94,8 @@ void read_file()
     // ignore the '-' line
     file.ignore(100, '\n');
 
-    extract_parameters();
+    extract_and_update_parameters();
+
 }
 
 
@@ -126,7 +126,7 @@ void detect_world_dimensions()
     file.open(WORLD_FILE_PATH_STR, ios_base::in);
 }
 
-void extract_parameters()
+void extract_and_update_parameters()
 {
     gamma = extract_bol_float();
     r = extract_bol_float();
@@ -140,6 +140,35 @@ void extract_parameters()
         u = extract_bol_float();
     if (b_flg)
         b = extract_bol_float();
+
+    for (int row_idx = 0; row_idx < vertical_size; row_idx ++)
+    {
+        for (int col_idx=0; col_idx < horizontal_size; col_idx ++)
+        {
+            switch(state[row_idx][col_idx].state_desc)
+            {
+            case START:
+                state[row_idx][col_idx].reward = r; // punishment, as in the rest of the states
+                break;
+            case SPECIAL:
+                state[row_idx][col_idx].reward = b; // specially defined reward/punishment
+                break;
+            case TERMINAL_T:
+                state[row_idx][col_idx].reward = t; // specially defined reward/punishment
+                state[row_idx][col_idx].current_utility = t; // specially defined reward/punishment
+                break;
+            case TERMINAL_U:
+                state[row_idx][col_idx].reward = u; // specially defined reward/punishment
+                state[row_idx][col_idx].current_utility = u;
+                break;
+            case REGULAR:
+                state[row_idx][col_idx].reward = r; // punishment, as in the rest of the states
+                break;
+            default:
+                break;
+            }
+        }
+    }
 }
 
 float extract_bol_float()
